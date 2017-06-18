@@ -3,17 +3,19 @@ import os
 os.environ["OMP_NUM_THREADS"] = "1"
 import argparse
 import sys
+import time
+
 import torch
 import torch.optim as optim
 from torch.multiprocessing import Process, Lock
 import torch.nn as nn
 import torch.nn.functional as F
+
 from envs import atari_env, read_config
 from model import A3Clstm
 from train import train
 from test import test
 import shared_optim
-import time
 
 
 parser = argparse.ArgumentParser(description='A3C')
@@ -25,7 +27,7 @@ parser.add_argument('--tau', type=float, default=1.00, metavar='T',
                     help='parameter for GAE (default: 1.00)')
 parser.add_argument('--seed', type=int, default=1, metavar='S',
                     help='random seed (default: 1)')
-parser.add_argument('--num-processes', type=int, default=32, metavar='NP',
+parser.add_argument('--num-processes', type=int, default=16, metavar='NP',
                     help='how many training processes to use (default: 32)')
 parser.add_argument('--num-steps', type=int, default=20, metavar='NS',
                     help='number of forward steps in A3C (default: 20)')
@@ -57,25 +59,34 @@ parser.add_argument('--log-dir', default='logs/', metavar='LG',
 # Training settings
 # Implemented multiprocessing using locks but was not beneficial. Hogwild
 # training was far superior
-
 if __name__ == '__main__':
     args = parser.parse_args()
     torch.set_default_tensor_type('torch.FloatTensor')
     torch.manual_seed(args.seed)
 
+    # get configuration of the env: crop of figure. cropped output dimension.
     setup_json = read_config(args.env_config)
     env_conf = setup_json["Default"]
     for i in setup_json.keys():
         if i in args.env_name:
             env_conf = setup_json[i]
+
+    # setup environment.
     env = atari_env(args.env_name, env_conf)
+
+    # define model.
     shared_model = A3Clstm(env.observation_space.shape[0], env.action_space)
+
+    # load saved model.
     if args.load:
         saved_state = torch.load('{0}{1}.dat'.format(
             args.load_model_dir, args.env_name))
         shared_model.load_state_dict(saved_state)
+
+    # critical for hogwild method.
     shared_model.share_memory()
 
+    # setup optimizer.
     if args.shared_optimizer:
         if args.optimizer == 'RMSprop':
             optimizer = shared_optim.SharedRMSprop(
@@ -100,6 +111,7 @@ if __name__ == '__main__':
         p.start()
         processes.append(p)
         time.sleep(0.1)
+
     for p in processes:
         time.sleep(0.1)
         p.join()

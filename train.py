@@ -3,12 +3,13 @@ import math
 import os
 import sys
 import torch
+
 import torch.nn.functional as F
 import torch.optim as optim
+from torch.autograd import Variable
+
 from envs import atari_env
 from model import A3Clstm
-from torch.autograd import Variable
-from torchvision import datasets, transforms
 
 
 def ensure_shared_grads(model, shared_model):
@@ -17,12 +18,13 @@ def ensure_shared_grads(model, shared_model):
             return
         shared_param._grad = param.grad
 
-
 def train(rank, args, shared_model, optimizer, env_conf):
     torch.manual_seed(args.seed + rank)
 
     env = atari_env(args.env_name, env_conf)
+    # model in the worker.
     model = A3Clstm(env.observation_space.shape[0], env.action_space)
+
     _ = env.reset()
     action = env.action_space.sample()
     _, _, _, info = env.step(action)
@@ -89,7 +91,6 @@ def train(rank, args, shared_model, optimizer, env_conf):
 
         R = torch.zeros(1, 1)
         if not done:
-
             value, _, _ = model((Variable(state.unsqueeze(0)), (hx, cx)))
             R = value.data
 

@@ -2,16 +2,17 @@ from __future__ import division
 import math
 import os
 import sys
-import torch
-import torch.nn.functional as F
-import torch.optim as optim
-from envs import atari_env, setup_logger
-from model import A3Clstm
-from torch.autograd import Variable
-from torchvision import datasets, transforms
 import time
 import logging
 
+import torch
+import torch.nn.functional as F
+import torch.optim as optim
+from torch.autograd import Variable
+from torchvision import datasets, transforms
+
+from envs import atari_env, setup_logger
+from model import A3Clstm
 
 def test(rank, args, shared_model, env_conf):
     log = {}

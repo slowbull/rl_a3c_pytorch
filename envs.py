@@ -1,18 +1,20 @@
 from __future__ import division
-import gym
-import numpy as np
-from gym.spaces.box import Box
-from skimage.color import rgb2gray
 import json
 import cv2
 import logging
+import numpy as np
+
+from gym.spaces.box import Box
+import gym
 
 
 def setup_logger(logger_name, log_file, level=logging.INFO):
     l = logging.getLogger(logger_name)
     formatter = logging.Formatter('%(asctime)s : %(message)s')
+
     fileHandler = logging.FileHandler(log_file, mode='w')
     fileHandler.setFormatter(formatter)
+
     streamHandler = logging.StreamHandler()
     streamHandler.setFormatter(formatter)
 
@@ -25,21 +27,18 @@ def read_config(file_path):
     json_object = json.load(open(file_path, 'r'))
     return json_object
 
-
 def atari_env(env_id, env_conf):
     env = gym.make(env_id)
     env = AtariRescale(env, env_conf)
     env = NormalizedEnv(env)
     return env
 
-
 def _process_frame(frame, conf):
     frame = frame[conf["crop1"]:conf["crop2"] + 160, :160]
-    frame = cv2.resize(rgb2gray(frame), (80, conf["dimension2"]))
+    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+    frame = cv2.resize(frame, (80, conf["dimension2"])) #maybe we can remove this part.
     frame = cv2.resize(frame, (80, 80))
-    #frame = np.reshape(frame, [1, 80, 80])
     return frame
-
 
 class AtariRescale(gym.ObservationWrapper):
 
@@ -51,9 +50,8 @@ class AtariRescale(gym.ObservationWrapper):
     def _observation(self, observation):
         return _process_frame(observation, self.conf)
 
-
+# moving average and std. 
 class NormalizedEnv(gym.ObservationWrapper):
-
     def __init__(self, env=None):
         super(NormalizedEnv, self).__init__(env)
         self.state_mean = 0

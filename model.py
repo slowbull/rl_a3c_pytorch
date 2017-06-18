@@ -1,6 +1,7 @@
 from __future__ import division
 import math
 import numpy as np
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -13,6 +14,7 @@ def normalized_columns_initializer(weights, std=1.0):
     return out
 
 
+# xavier init
 def weights_init(m):
     classname = m.__class__.__name__
     if classname.find('Conv') != -1:
@@ -45,6 +47,7 @@ class A3Clstm(torch.nn.Module):
         self.actor_linear = nn.Linear(512, num_outputs)
 
         self.apply(weights_init)
+
         self.actor_linear.weight.data = normalized_columns_initializer(
             self.actor_linear.weight.data, 0.01)
         self.actor_linear.bias.data.fill_(0)
@@ -55,6 +58,7 @@ class A3Clstm(torch.nn.Module):
         self.lstm.bias_ih.data.fill_(0)
         self.lstm.bias_hh.data.fill_(0)
 
+        # sets the model in training mode.
         self.train()
 
     def forward(self, inputs):
